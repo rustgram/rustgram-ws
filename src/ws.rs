@@ -271,11 +271,50 @@ impl Sink<Message> for WebSocket
 
 //__________________________________________________________________________________________________
 
-pub fn on_upgrade<C, Fut>(mut req: Request, callback: C) -> Result<Response, Response>
+/// What to do when a connection upgrade fails.
+///
+/// See [`WebSocketUpgrade::on_failed_upgrade`] for more details.
+pub trait OnFailedUpdgrade: Send + 'static
+{
+	/// Call the callback.
+	fn call(self, error: BoxError);
+}
+
+impl<F> OnFailedUpdgrade for F
+where
+	F: FnOnce(BoxError) + Send + 'static,
+{
+	fn call(self, error: BoxError)
+	{
+		self(error)
+	}
+}
+
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct DefaultOnFailedUpgrade;
+
+impl OnFailedUpdgrade for DefaultOnFailedUpgrade
+{
+	#[inline]
+	fn call(self, _error: BoxError) {}
+}
+
+//__________________________________________________________________________________________________
+
+pub fn on_upgrade<C, Fut>(req: Request, callback: C) -> Result<Response, Response>
 where
 	C: FnOnce(WebSocket) -> Fut + Send + 'static,
 	Fut: Future<Output = ()> + Send + 'static,
-	//E: FnOnce(hyper::Error) + Send + 'static,
+{
+	on_upgrade_with_err(req, callback, DefaultOnFailedUpgrade)
+}
+
+pub fn on_upgrade_with_err<C, Fut, E>(mut req: Request, callback: C, on_failed_upgrade: E) -> Result<Response, Response>
+where
+	C: FnOnce(WebSocket) -> Fut + Send + 'static,
+	Fut: Future<Output = ()> + Send + 'static,
+	E: OnFailedUpdgrade + Send + 'static,
 {
 	let headers = req.headers();
 
@@ -309,9 +348,7 @@ where
 		let upgraded = match hyper::upgrade::on(&mut req).await {
 			Ok(upgraded) => upgraded,
 			Err(e) => {
-				// if let Some(f) = on_failed_upgrade {
-				// 	f(e);
-				// }
+				on_failed_upgrade.call(e.into());
 				return;
 			},
 		};

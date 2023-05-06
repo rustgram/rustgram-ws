@@ -1,6 +1,5 @@
 /// This file based on Axum extract ws.rs and is a port to rustgram
 /// The Axum license is MIT
-use std::borrow::Cow;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -15,163 +14,10 @@ use hyper::{header, Body, HeaderMap, StatusCode};
 use rustgram::{Request, Response};
 use sha1::{Digest, Sha1};
 use tokio_tungstenite::tungstenite::protocol::{self};
-use tokio_tungstenite::tungstenite::{self as ts};
+use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
 use crate::BoxError;
-
-/// Status code used to indicate why an endpoint is closing the WebSocket connection.
-pub type CloseCode = u16;
-
-/// A struct representing the close command.
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CloseFrame<'t>
-{
-	/// The reason as a code.
-	pub code: CloseCode,
-	/// The reason as text string.
-	pub reason: Cow<'t, str>,
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Message
-{
-	/// A text WebSocket message
-	Text(String),
-	/// A binary WebSocket message
-	Binary(Vec<u8>),
-	/// A ping message with the specified payload
-	///
-	/// The payload here must have a length less than 125 bytes.
-	///
-	/// Ping messages will be automatically responded to by the server, so you do not have to worry
-	/// about dealing with them yourself.
-	Ping(Vec<u8>),
-	/// A pong message with the specified payload
-	///
-	/// The payload here must have a length less than 125 bytes.
-	///
-	/// Pong messages will be automatically sent to the client if a ping message is received, so
-	/// you do not have to worry about constructing them yourself unless you want to implement a
-	/// [unidirectional heartbeat](https://tools.ietf.org/html/rfc6455#section-5.5.3).
-	Pong(Vec<u8>),
-	/// A close message with the optional close frame.
-	Close(Option<CloseFrame<'static>>),
-}
-
-impl Message
-{
-	fn into_tungstenite(self) -> ts::Message
-	{
-		match self {
-			Self::Text(text) => ts::Message::Text(text),
-			Self::Binary(binary) => ts::Message::Binary(binary),
-			Self::Ping(ping) => ts::Message::Ping(ping),
-			Self::Pong(pong) => ts::Message::Pong(pong),
-			Self::Close(Some(close)) => {
-				ts::Message::Close(Some(protocol::CloseFrame {
-					code: ts::protocol::frame::coding::CloseCode::from(close.code),
-					reason: close.reason,
-				}))
-			},
-			Self::Close(None) => ts::Message::Close(None),
-		}
-	}
-
-	fn from_tungstenite(message: ts::Message) -> Option<Self>
-	{
-		match message {
-			ts::Message::Text(text) => Some(Self::Text(text)),
-			ts::Message::Binary(binary) => Some(Self::Binary(binary)),
-			ts::Message::Ping(ping) => Some(Self::Ping(ping)),
-			ts::Message::Pong(pong) => Some(Self::Pong(pong)),
-			ts::Message::Close(Some(close)) => {
-				Some(Self::Close(Some(CloseFrame {
-					code: close.code.into(),
-					reason: close.reason,
-				})))
-			},
-			ts::Message::Close(None) => Some(Self::Close(None)),
-			// we can ignore `Frame` frames as recommended by the tungstenite maintainers
-			// https://github.com/snapview/tungstenite-rs/issues/268
-			ts::Message::Frame(_) => None,
-		}
-	}
-
-	/// Consume the WebSocket and return it as binary data.
-	pub fn into_data(self) -> Vec<u8>
-	{
-		match self {
-			Self::Text(string) => string.into_bytes(),
-			Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => data,
-			Self::Close(None) => Vec::new(),
-			Self::Close(Some(frame)) => frame.reason.into_owned().into_bytes(),
-		}
-	}
-
-	/// Attempt to consume the WebSocket message and convert it to a String.
-	pub fn into_text(self) -> Result<String, BoxError>
-	{
-		match self {
-			Self::Text(string) => Ok(string),
-			Self::Binary(data) | Self::Ping(data) | Self::Pong(data) => Ok(String::from_utf8(data).map_err(|err| err.utf8_error())?),
-			Self::Close(None) => Ok(String::new()),
-			Self::Close(Some(frame)) => Ok(frame.reason.into_owned()),
-		}
-	}
-
-	/// Attempt to get a &str from the WebSocket message,
-	/// this will try to convert binary data to utf8.
-	pub fn to_text(&self) -> Result<&str, BoxError>
-	{
-		match *self {
-			Self::Text(ref string) => Ok(string),
-			Self::Binary(ref data) | Self::Ping(ref data) | Self::Pong(ref data) => Ok(std::str::from_utf8(data)?),
-			Self::Close(None) => Ok(""),
-			Self::Close(Some(ref frame)) => Ok(&frame.reason),
-		}
-	}
-}
-
-impl From<String> for Message
-{
-	fn from(string: String) -> Self
-	{
-		Message::Text(string)
-	}
-}
-
-impl<'s> From<&'s str> for Message
-{
-	fn from(string: &'s str) -> Self
-	{
-		Message::Text(string.into())
-	}
-}
-
-impl<'b> From<&'b [u8]> for Message
-{
-	fn from(data: &'b [u8]) -> Self
-	{
-		Message::Binary(data.into())
-	}
-}
-
-impl From<Vec<u8>> for Message
-{
-	fn from(data: Vec<u8>) -> Self
-	{
-		Message::Binary(data)
-	}
-}
-
-impl From<Message> for Vec<u8>
-{
-	fn from(msg: Message) -> Self
-	{
-		msg.into_data()
-	}
-}
 
 fn sign(key: &[u8]) -> HeaderValue
 {
@@ -203,10 +49,7 @@ impl WebSocket
 	/// Send a message.
 	pub async fn send(&mut self, msg: Message) -> Result<(), BoxError>
 	{
-		self.inner
-			.send(msg.into_tungstenite())
-			.await
-			.map_err(Into::into)
+		self.inner.send(msg).await.map_err(Into::into)
 	}
 
 	/// Gracefully close this WebSocket.
@@ -228,16 +71,10 @@ impl Stream for WebSocket
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>
 	{
-		loop {
-			match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
-				Some(Ok(msg)) => {
-					if let Some(msg) = Message::from_tungstenite(msg) {
-						return Poll::Ready(Some(Ok(msg)));
-					}
-				},
-				Some(Err(err)) => return Poll::Ready(Some(Err(err.into()))),
-				None => return Poll::Ready(None),
-			}
+		match futures_util::ready!(self.inner.poll_next_unpin(cx)) {
+			Some(Ok(msg)) => Poll::Ready(Some(Ok(msg))),
+			Some(Err(err)) => Poll::Ready(Some(Err(err.into()))),
+			None => Poll::Ready(None),
 		}
 	}
 }
@@ -254,7 +91,7 @@ impl Sink<Message> for WebSocket
 	fn start_send(mut self: Pin<&mut Self>, item: Message) -> Result<(), Self::Error>
 	{
 		Pin::new(&mut self.inner)
-			.start_send(item.into_tungstenite())
+			.start_send(item)
 			.map_err(Into::into)
 	}
 

@@ -5,7 +5,8 @@ use futures_util::SinkExt;
 use hyper::StatusCode;
 use rustgram::service::IntoResponse;
 use rustgram::{r, Request, Response, Router};
-use rustgram_ws::ws::{Message, WebSocket};
+use rustgram_ws::ws::WebSocket;
+use rustgram_ws::TungsteniteMessage;
 
 async fn not_found_handler(_req: Request) -> Response
 {
@@ -78,7 +79,7 @@ async fn read_socket(mut receiver: SplitStream<WebSocket>)
 	}
 }
 
-async fn write_socket(mut sender: SplitSink<WebSocket, Message>)
+async fn write_socket(mut sender: SplitSink<WebSocket, TungsteniteMessage>)
 {
 	sender.send("hello world".into()).await.unwrap();
 }

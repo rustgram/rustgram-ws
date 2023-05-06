@@ -1,0 +1,20 @@
+[package]
+name = "rustgram-ws"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+hyper = { version = "^0.14.26", features = ["server", "http1", "http2", "runtime"] }
+rustgram = "0.1.8"
+
+tokio-tungstenite = "0.18.0"
+tokio = "1"
+futures-util = "0.3.28"
+base64 = "0.21.0"
+sha1 = "0.10.5"
+bytes = "1.4.0"
+
+[workspace]
+members = ["examples/websockets"]

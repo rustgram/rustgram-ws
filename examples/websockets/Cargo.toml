@@ -1,0 +1,12 @@
+[package]
+name = "websockets"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rustgram = "0.1.8"
+rustgram-ws = {version = "*", path = "../.." }
+tokio = { version = "1.0", features = ["full"] }
+hyper = { version = "0.14", features = ["full"] }

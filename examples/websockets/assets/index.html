@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Ws test</title>
+</head>
+<body>
+	<script>
+		let webSocket = new WebSocket('ws://127.0.0.1:3000/ws');
+		webSocket.onmessage = function(e) { console.log(e)}
+
+		webSocket.onopen = function(e) {
+			console.log("open")
+
+			webSocket.send("1")
+
+			webSocket.send("2")
+
+			webSocket.send("3")
+
+			webSocket.send("4")
+		}
+
+		webSocket.onerror = function(error) {
+			console.log(error)
+		};
+	</script>
+</body>
+</html>

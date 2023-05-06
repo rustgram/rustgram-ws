@@ -274,13 +274,13 @@ impl Sink<Message> for WebSocket
 /// What to do when a connection upgrade fails.
 ///
 /// See [`WebSocketUpgrade::on_failed_upgrade`] for more details.
-pub trait OnFailedUpdgrade: Send + 'static
+pub trait OnFailedUpgrade: Send + 'static
 {
 	/// Call the callback.
 	fn call(self, error: BoxError);
 }
 
-impl<F> OnFailedUpdgrade for F
+impl<F> OnFailedUpgrade for F
 where
 	F: FnOnce(BoxError) + Send + 'static,
 {
@@ -294,7 +294,7 @@ where
 #[derive(Debug)]
 pub struct DefaultOnFailedUpgrade;
 
-impl OnFailedUpdgrade for DefaultOnFailedUpgrade
+impl OnFailedUpgrade for DefaultOnFailedUpgrade
 {
 	#[inline]
 	fn call(self, _error: BoxError) {}
@@ -314,7 +314,7 @@ pub fn on_upgrade_with_err<C, Fut, E>(mut req: Request, callback: C, on_failed_u
 where
 	C: FnOnce(WebSocket) -> Fut + Send + 'static,
 	Fut: Future<Output = ()> + Send + 'static,
-	E: OnFailedUpdgrade + Send + 'static,
+	E: OnFailedUpgrade + Send + 'static,
 {
 	let headers = req.headers();
 

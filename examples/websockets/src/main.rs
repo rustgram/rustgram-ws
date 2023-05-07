@@ -6,7 +6,7 @@ use hyper::StatusCode;
 use rustgram::service::IntoResponse;
 use rustgram::{r, Request, Response, Router};
 use rustgram_ws::ws::WebSocket;
-use rustgram_ws::TungsteniteMessage;
+use rustgram_ws::Message;
 
 async fn not_found_handler(_req: Request) -> Response
 {
@@ -79,7 +79,7 @@ async fn read_socket(mut receiver: SplitStream<WebSocket>)
 	}
 }
 
-async fn write_socket(mut sender: SplitSink<WebSocket, TungsteniteMessage>)
+async fn write_socket(mut sender: SplitSink<WebSocket, Message>)
 {
 	sender.send("hello world".into()).await.unwrap();
 }

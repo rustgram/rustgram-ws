@@ -80,6 +80,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "chatroom_with_http_sender"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "hyper",
+ "rustgram",
+ "rustgram-ws",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "cpufeatures"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

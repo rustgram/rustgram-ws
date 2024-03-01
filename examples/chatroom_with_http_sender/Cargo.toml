@@ -1,0 +1,19 @@
+[package]
+name = "chatroom_with_http_sender"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rustgram = "0.1.8"
+rustgram-ws = {version = "*", path = "../.." }
+tokio = { version = "1.0", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+hyper = { version = "0.14", features = ["full"] }
+futures-util = "0.3.28"
+#_______________________________________________________________________________________________________________________
+# json handling
+serde_json = {version = "1.0.81", default-features = false, features = ["alloc"]}
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }

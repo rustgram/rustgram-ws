@@ -17,4 +17,4 @@ sha1 = "0.10.5"
 bytes = "1.4.0"
 
 [workspace]
-members = ["examples/websockets","examples/chatroom"]
+members = ["examples/websockets","examples/chatroom", "examples/chatroom_with_http_sender"]
